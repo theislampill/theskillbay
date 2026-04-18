@@ -5,4 +5,5 @@ pub mod policy;
 pub mod discovery;
 pub mod storage;
 pub mod execution;
+pub mod web;
 pub mod cli;

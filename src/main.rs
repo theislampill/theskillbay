@@ -5,7 +5,7 @@ use theskillbay::crypto::*;
 use theskillbay::git::*;
 use theskillbay::policy::*;
 use theskillbay::discovery::DiscoveryStore;
-use theskillbay::execution::*;
+use theskillbay::web::*;
 use std::fs;
 use std::path::Path;
 use anyhow::Result;
@@ -38,6 +38,7 @@ async fn main() -> Result<()> {
                 dependencies: vec![],
                 entry_point: "main.rs".to_string(),
                 tests: vec![],
+                benchmarks: vec![],
             };
             manifest.validate()?;
             let manifest_json = serde_json::to_string_pretty(&manifest)?;
@@ -71,9 +72,15 @@ async fn main() -> Result<()> {
                     ("name".to_string(), manifest.version.clone()),
                     ("description".to_string(), "Example skill".to_string()),
                     ("author".to_string(), manifest.author.clone()),
+                    ("git_url".to_string(), format!("file://{}", path.canonicalize()?.display())),
                 ].into(),
                 signature,
                 public_key: kp.public_key.clone(),
+                reputation: ReputationSummary {
+                    skill_id: skill_id.clone(),
+                    score: 1.0, // Default
+                    reviews: 0,
+                },
             };
             
             let pow = ProofOfWorkRecord {
@@ -88,7 +95,7 @@ async fn main() -> Result<()> {
                 pow,
             };
             
-            store.advertise(announcement)?;
+            store.advertise(announcement, publish_record)?;
             println!("Published skill");
         }
         Commands::Discover { query } => {
@@ -98,28 +105,58 @@ async fn main() -> Result<()> {
             }
         }
         Commands::Verify { skill_id } => {
-            // Stub: assume verified
-            println!("Verified skill {}", skill_id);
-        }
-        Commands::Install { skill_id, path } => {
-            // Stub: assume path is the source repo
-            let dest = Path::new("./skills").join(&skill_id);
-            fs::create_dir_all(&dest)?;
-            // Simple copy (in real, git clone)
-            for entry in fs::read_dir(&path)? {
-                let entry = entry?;
-                let src = entry.path();
-                let dst = dest.join(entry.file_name());
-                if src.is_file() {
-                    fs::copy(&src, &dst)?;
+            let announcements = store.discover(&skill_id);
+            if let Some(ann) = announcements.into_iter().find(|a| a.skill_id == skill_id) {
+                // Check signature
+                let data = serde_json::to_string(&ann.metadata)?;
+                let sig_valid = verify(data.as_bytes(), &ann.signature, &ann.public_key)?;
+                if !sig_valid {
+                    println!("Verification failed: Invalid signature for skill {}", skill_id);
+                    return Ok(());
                 }
+                // Check PoW
+                if let Some(rec) = store.get_publish_record(&skill_id) {
+                    let pow_valid = check_pow(&rec.pow.content_hash, &rec.pow.nonce, rec.pow.difficulty);
+                    if !pow_valid {
+                        println!("Verification failed: Invalid PoW for skill {}", skill_id);
+                        return Ok(());
+                    }
+                } else {
+                    println!("Verification failed: No publish record found for skill {}", skill_id);
+                    return Ok(());
+                }
+                println!("Verified skill {}", skill_id);
+            } else {
+                println!("Verification failed: Skill {} not found", skill_id);
             }
-            println!("Installed skill {} to {:?}", skill_id, dest);
+        }
+        Commands::Install { skill_id, path: _ } => {
+            // Discover the skill
+            let announcements = store.discover(&skill_id);
+            if let Some(ann) = announcements.into_iter().find(|a| a.skill_id == skill_id) {
+                let local_policy = storage.load_policy()?;
+                let central_policy = storage.load_central_policy()?;
+                let decision = combined_install_decision(&ann, &local_policy, central_policy.as_ref());
+                if decision.allowed {
+                    if let Some(git_url) = ann.metadata.get("git_url") {
+                        let dest = Path::new("./skills").join(&skill_id);
+                        clone_repo(git_url, &dest)?;
+                        println!("Installed skill {} from {}", skill_id, git_url);
+                    } else {
+                        println!("Install failed: No git_url in announcement for skill {}", skill_id);
+                    }
+                } else {
+                    println!("Install denied for skill {}: {}", skill_id, decision.reason);
+                }
+            } else {
+                println!("Install failed: Skill {} not found", skill_id);
+            }
         }
         Commands::Execute { skill_id, args } => {
             // Check policy
             let local_policy = storage.load_policy()?;
-            let decision = evaluate_execution(&skill_id, &local_policy, None);
+            let central_policy = storage.load_central_policy()?;
+            let decision = evaluate_execution(&skill_id, &local_policy, central_policy.as_ref());
             if decision.allowed {
                 // Find skill path (stub: assume ./skills/{skill_id})
                 let skill_path = Path::new("./skills").join(&skill_id);
@@ -146,6 +183,58 @@ async fn main() -> Result<()> {
             policy.min_pow_difficulty = min_pow;
             storage.save_policy(&policy)?;
             println!("Policy updated");
+        }
+        Commands::SetCentralPolicy { banned } => {
+            let policy = crate::models::CentralPolicy {
+                approved_skills: vec![], // Stub
+                banned_publishers: banned.split(',').map(|s| s.trim().to_string()).collect(),
+            };
+            storage.save_central_policy(&policy)?;
+            println!("Central policy updated");
+        }
+        Commands::Pin { skill_id } => {
+            let pin_record = PinRecord {
+                skill_id: skill_id.clone(),
+                content_hash: "stub".to_string(), // In real, from publish record
+                pinner: "local".to_string(),
+            };
+            store.pin(pin_record)?;
+            println!("Pinned skill {}", skill_id);
+        }
+        Commands::Patch { path, description } => {
+            // Commit changes
+            let repo = git2::Repository::open(&path)?;
+            commit(&repo, &description)?;
+            
+            let manifest_path = path.join("manifest.json");
+            let skill_id_path = path.join("skill_id.txt");
+            let manifest: SkillManifest = serde_json::from_str(&fs::read_to_string(manifest_path)?)?;
+            let skill_id = fs::read_to_string(skill_id_path)?.trim().to_string();
+            
+            // Hash patch (simplified)
+            let patch_hash = sha256(description.as_bytes());
+            
+            let kp = storage.get_keypair()?;
+            let pow = ProofOfWorkRecord {
+                content_hash: patch_hash.clone(),
+                nonce: find_nonce(&patch_hash, 4),
+                difficulty: 4,
+            };
+            
+            let patch_record = PatchRecord {
+                skill_id,
+                patch_hash,
+                author: kp.public_key.clone(),
+                description,
+                pow,
+            };
+            
+            store.add_patch(patch_record)?;
+            println!("Created patch for skill {}", skill_id);
+        }
+        Commands::Web {} => {
+            println!("Starting web UI at http://127.0.0.1:8080");
+            run_web_server(store).await?;
         }
     }
     Ok(())

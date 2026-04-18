@@ -13,13 +13,33 @@
 - Persistent discovery
 - Manifest validation
 - Basic execution sandbox
+- Git clone for install
+- Verify command with sig/PoW checks
+- Central policy support
+- Updated tests and docs
+- Reputation stub
+- Pinning support
+- Error handling improvements
+- Benchmarking stub
+- Full flow example
 
 ## V0 Next
-- Git clone for install
-- Verify command implementation
-- Central policy support
-- More tests
-- Doc updates
+- Patch/PR support
+- Semantic dedupe stub
+- UI stub
+- libp2p integration stub (dependency added)
+- Performance benchmarking
+
+## V1 Later
+- Replace sled with libp2p DHT
+- Add reputation system
+- Collaborative editing UI
+- Semantic dedupe hooks
+
+## Deferred Hard Problems
+- Full distributed consensus
+- Advanced economics
+- Enterprise auth
 
 ## V1 Later
 - Replace in-memory discovery with libp2p DHT

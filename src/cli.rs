@@ -66,4 +66,25 @@ pub enum Commands {
         /// Min PoW difficulty
         min_pow: u32,
     },
+    /// Set central policy
+    SetCentralPolicy {
+        /// Banned publishers (comma-separated)
+        banned: String,
+    },
+    /// Pin a skill for availability
+    Pin {
+        /// Skill ID
+        skill_id: String,
+    },
+    /// Create a patch for a skill
+    Patch {
+        /// Skill path
+        path: std::path::PathBuf,
+        /// Patch description
+        description: String,
+    },
+    /// Start web UI
+    Web {},
+    /// Start web UI
+    Web {},
 }

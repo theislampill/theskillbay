@@ -34,19 +34,19 @@ impl Storage {
         }
     }
 
-    pub fn save_policy(&self, policy: &crate::models::LocalPolicy) -> Result<()> {
+    pub fn save_central_policy(&self, policy: &crate::models::CentralPolicy) -> Result<()> {
         let tree = self.db.open_tree("policies")?;
-        tree.insert("local", bincode::serialize(policy)?)?;
+        tree.insert("central", bincode::serialize(policy)?)?;
         Ok(())
     }
 
-    pub fn load_policy(&self) -> Result<crate::models::LocalPolicy> {
+    pub fn load_central_policy(&self) -> Result<Option<crate::models::CentralPolicy>> {
         let tree = self.db.open_tree("policies")?;
-        if let Some(data) = tree.get("local")? {
-            let policy: crate::models::LocalPolicy = bincode::deserialize(&data)?;
-            Ok(policy)
+        if let Some(data) = tree.get("central")? {
+            let policy: crate::models::CentralPolicy = bincode::deserialize(&data)?;
+            Ok(Some(policy))
         } else {
-            Ok(crate::models::LocalPolicy::default())
+            Ok(None)
         }
     }
 }

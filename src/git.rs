@@ -8,6 +8,12 @@ pub fn init_repo(path: &Path) -> Result<Repository> {
     Ok(repo)
 }
 
+/// Clone a Git repo from url to path
+pub fn clone_repo(url: &str, path: &Path) -> Result<Repository> {
+    let repo = Repository::clone(url, path)?;
+    Ok(repo)
+}
+
 /// Get the current commit hash
 pub fn get_head_hash(repo: &Repository) -> Result<String> {
     let head = repo.head()?;

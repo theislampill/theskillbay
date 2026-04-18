@@ -47,3 +47,15 @@
 
 ## Network Visibility
 - Announcements, pins, reputation summaries
+
+## Announcement Metadata
+- name: Skill name
+- description: Description
+- author: Author
+- git_url: Git repository URL for cloning
+
+## Storage
+- Keys: Stored in sled "keys" tree
+- Policies: Local and central in "policies" tree
+- Announcements: In "announcements" tree
+- PublishRecords: In "publish_records" tree

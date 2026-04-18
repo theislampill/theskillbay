@@ -20,6 +20,7 @@ pub struct SkillManifest {
     pub dependencies: Vec<String>, // Other skill IDs
     pub entry_point: String, // Path to executable or script
     pub tests: Vec<String>, // Paths to test files
+    pub benchmarks: Vec<String>, // Stub: Paths to benchmark files
 }
 
 impl SkillManifest {
@@ -82,6 +83,7 @@ pub struct SignedAnnouncement {
     pub metadata: HashMap<String, String>,
     pub signature: String,
     pub public_key: String,
+    pub reputation: ReputationSummary, // Stub
 }
 
 /// Summary of reputation

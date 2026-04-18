@@ -69,9 +69,12 @@ pub fn combined_install_decision(
     if !local_decision.allowed {
         return local_decision;
     }
-    if let Some(central_decision) = evaluate_central_install(announcement, central_policy) {
-        if !central_decision.allowed {
-            return central_decision;
+    if let Some(central) = central_policy {
+        let central_decision = evaluate_central_install(announcement, Some(central));
+        if let Some(dec) = central_decision {
+            if !dec.allowed {
+                return dec;
+            }
         }
     }
     local_decision
@@ -91,7 +94,7 @@ pub fn evaluate_execution(
         };
     }
     if let Some(central) = central_policy {
-        if central.banned_publishers.contains(skill_id) { // Assuming skill_id maps, but in real, check publisher
+        if central.banned_publishers.contains(skill_id) { // Note: in real, check publisher, but stub
             return ExecutionDecision {
                 skill_id: skill_id.to_string(),
                 allowed: false,
