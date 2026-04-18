@@ -1,0 +1,14 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "SkillManifest",
+  "type": "object",
+  "properties": {
+    "version": {"type": "string"},
+    "author": {"type": "string"},
+    "capabilities": {"type": "array", "items": {"type": "string"}},
+    "dependencies": {"type": "array", "items": {"type": "string"}},
+    "entry_point": {"type": "string"},
+    "tests": {"type": "array", "items": {"type": "string"}}
+  },
+  "required": ["version", "author", "capabilities", "entry_point"]
+}
