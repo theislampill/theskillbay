@@ -1,9 +1,19 @@
 use libp2p::{
-    gossipsub, kad::{self, store::MemoryStore}, mdns, noise, swarm::NetworkBehaviour, swarm::SwarmEvent, tcp, yamux, PeerId, Swarm,
+    gossipsub,
+    kad::{self, record::Key as RecordKey, store::MemoryStore},
+    mdns,
+    noise,
+    swarm::NetworkBehaviour,
+    swarm::SwarmEvent,
+    tcp,
+    yamux,
+    PeerId,
+    Swarm,
 };
 use futures::prelude::*;
+use serde_json;
 use tokio::sync::mpsc;
-use crate::models::{SignedAnnouncement, ReviewRecord, P2PMessage};
+use crate::models::{P2PMessage, ReviewRecord, SignedAnnouncement};
 
 /// P2P discovery using libp2p gossipsub, mdns, and kad DHT
 
