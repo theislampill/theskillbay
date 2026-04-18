@@ -236,6 +236,21 @@ async fn main() -> Result<()> {
             println!("Starting web UI at http://127.0.0.1:8080");
             run_web_server(store).await?;
         }
+        Commands::Review { skill_id, rating, comment } => {
+            let review = ReviewRecord {
+                skill_id: skill_id.clone(),
+                rating: rating as u8,
+                comment,
+                timestamp: std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_secs(),
+            };
+            store.add_review(review)?;
+            println!("Reviewed skill {} with rating {}", skill_id, rating);
+        }
+        Commands::P2p {} => {
+            println!("Starting P2P node...");
+            let mut p2p = theskillbay::p2p::P2PDiscovery::new().await?;
+            p2p.run().await?;
+        }
     }
     Ok(())
 }

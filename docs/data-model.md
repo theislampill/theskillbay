@@ -39,6 +39,18 @@
 ## ExecutionDecision
 - skill_id, allowed, reason
 
+## PinRecord
+- skill_id, content_hash, pinner
+
+## ReviewRecord
+- skill_id, rating (1-5), comment, timestamp
+
+## PatchRecord
+- skill_id, patch_hash, author, description, pow
+
+## SubmittedPatch
+- skill_id, description, diff, timestamp
+
 ## Hashing
 - Manifest + code hashed with SHA-256
 

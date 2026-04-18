@@ -7,3 +7,5 @@ pub mod storage;
 pub mod execution;
 pub mod web;
 pub mod cli;
+pub mod dedupe;
+pub mod p2p;

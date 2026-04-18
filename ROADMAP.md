@@ -30,24 +30,21 @@
 - libp2p integration stub (dependency added)
 - Performance benchmarking
 
-## V1 Later
-- Replace sled with libp2p DHT
-- Add reputation system
-- Collaborative editing UI
-- Semantic dedupe hooks
+## V1 Done
+- Basic reputation system (reviews and ratings)
+- Collaborative editing UI (web forms for reviews and patches)
+- Semantic dedupe hooks (similarity checking)
+- Performance benchmarking with Criterion
+- Basic P2P discovery with libp2p
+
+## V1 Next
+- Integrate P2P with sled storage
+- Advanced reputation with trust propagation
 
 ## Deferred Hard Problems
 - Full distributed consensus
 - Advanced economics
 - Enterprise auth
-
-## V1 Later
-- Replace in-memory discovery with libp2p DHT
-- Add reputation system
-- Collaborative editing UI
-- Semantic dedupe hooks
-
-## Deferred Hard Problems
 - Full distributed consensus
 - Advanced economics
 - Enterprise auth

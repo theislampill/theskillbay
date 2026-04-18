@@ -85,6 +85,15 @@ pub enum Commands {
     },
     /// Start web UI
     Web {},
-    /// Start web UI
-    Web {},
+    /// Review a skill
+    Review {
+        /// Skill ID
+        skill_id: String,
+        /// Rating (1-5)
+        rating: u32,
+        /// Comment
+        comment: String,
+    },
+    /// Start P2P node
+    P2p {},
 }

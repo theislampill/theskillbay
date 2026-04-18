@@ -68,6 +68,15 @@ pub struct PatchRecord {
     pub pow: ProofOfWorkRecord,
 }
 
+/// Submitted patch for collaborative editing
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SubmittedPatch {
+    pub skill_id: String,
+    pub description: String,
+    pub diff: String,
+    pub timestamp: u64,
+}
+
 /// Proof of Work for anti-spam
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ProofOfWorkRecord {
@@ -100,6 +109,15 @@ pub struct PinRecord {
     pub skill_id: String,
     pub content_hash: String,
     pub pinner: String,
+}
+
+/// Review record for reputation
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ReviewRecord {
+    pub skill_id: String,
+    pub rating: u8, // 1-5
+    pub comment: String,
+    pub timestamp: u64,
 }
 
 /// Local policy rules

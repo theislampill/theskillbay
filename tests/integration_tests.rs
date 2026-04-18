@@ -2,7 +2,9 @@ use theskillbay::crypto::*;
 use theskillbay::policy::*;
 use theskillbay::models::*;
 use theskillbay::storage::Storage;
+use theskillbay::dedupe::*;
 use std::path::Path;
+use std::collections::HashMap;
 
 #[test]
 fn test_sha256() {
@@ -86,4 +88,33 @@ fn test_storage() {
     storage.save_policy(&policy).unwrap();
     let loaded = storage.load_policy().unwrap();
     assert_eq!(loaded.blocked_skills, policy.blocked_skills);
+}
+
+#[test]
+fn test_dedupe_similarity() {
+    let ann1 = SignedAnnouncement {
+        skill_id: "skill1".to_string(),
+        metadata: [("name".to_string(), "test skill".to_string()), ("description".to_string(), "a test skill for testing".to_string())].iter().cloned().collect(),
+        signature: "".to_string(),
+        public_key: "".to_string(),
+        reputation: ReputationSummary {
+            skill_id: "skill1".to_string(),
+            score: 1.0,
+            reviews: 0,
+        },
+    };
+    let ann2 = SignedAnnouncement {
+        skill_id: "skill2".to_string(),
+        metadata: [("name".to_string(), "test tool".to_string()), ("description".to_string(), "a test tool for testing".to_string())].iter().cloned().collect(),
+        signature: "".to_string(),
+        public_key: "".to_string(),
+        reputation: ReputationSummary {
+            skill_id: "skill2".to_string(),
+            score: 1.0,
+            reviews: 0,
+        },
+    };
+    let score = similarity_score(&ann1, &ann2);
+    assert!(score > 0.0); // Should have some similarity due to "test" and "testing"
+    assert!(score < 1.0); // Not identical
 }

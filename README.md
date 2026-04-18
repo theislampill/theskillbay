@@ -28,6 +28,18 @@ Commands:
 - set-central-policy: Configure central policy
 - pin: Pin a skill for availability
 - web: Start web UI for skill discovery
+- review: Review a skill with rating and comment
+- p2p: Start P2P node for decentralized discovery
+
+## Web UI
+
+The web UI provides a simple interface for skill discovery and collaboration:
+
+- **Skill Listing**: Browse available skills with reputation scores.
+- **Review Submission**: Submit ratings and comments for skills to build reputation.
+- **Patch Submission**: Propose patches for skill improvements via web forms.
+
+Start the web server with `harbour web` and visit `http://127.0.0.1:8080`.
 
 ## Architecture
 

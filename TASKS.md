@@ -78,3 +78,59 @@
 - Files: examples/
 - Prerequisites: All commands working
 - Definition of Done: Example script or README
+
+### Task 16: Add Web UI Stub
+- Title: Basic HTML interface for skill listing
+- Purpose: Enable web access
+- Files: src/web.rs
+- Prerequisites: Discovery working
+- Definition of Done: Serve HTML page with skills
+
+### Task 17: Add P2P Discovery Stub
+- Title: Stub libp2p for future network
+- Purpose: Prepare for decentralized discovery
+- Files: src/p2p.rs
+- Prerequisites: Discovery working
+- Definition of Done: Basic libp2p setup
+
+### Task 18: Implement Basic Reputation System
+- Title: Add reviews and ratings to skills
+- Purpose: Build trust through user feedback
+- Files: src/models.rs, src/cli.rs, src/discovery.rs
+- Prerequisites: Discovery working
+- Definition of Done: Review command and storage
+
+### Task 19: Add Patch Support
+- Title: Allow skill updates via patches
+- Purpose: Enable collaborative improvements
+- Files: src/models.rs, src/git.rs
+- Prerequisites: Git integration working
+- Definition of Done: Patch command to apply changes
+
+### Task 20: Performance Benchmarking
+- Status: Done
+- Added Criterion benchmarks for crypto (SHA256, sign, verify, PoW) and storage (save/load policy, advertise) in benches/.
+
+## V1 Tasks
+
+### Task 21: Implement Basic Reputation System
+- Status: Done
+- Added review command, ReviewRecord, and reputation calculation in announcements.
+
+### Task 22: Add Collaborative Editing UI
+- Title: Enhance web UI for patch submission and reviews
+- Purpose: Enable collaborative editing via web
+- Files: src/web.rs
+- Prerequisites: Web UI working
+- Definition of Done: Forms for patches and reviews in web UI
+
+### Task 23: Implement Semantic Dedupe Hooks
+- Status: Done
+- Added src/dedupe.rs with Jaccard similarity on names/descriptions, and find_similar method in discovery.
+
+### Task 24: Implement Basic P2P Discovery
+- Title: Add libp2p-based P2P node for decentralized discovery
+- Purpose: Enable peer-to-peer skill sharing
+- Files: src/p2p.rs, src/main.rs
+- Prerequisites: libp2p dependency added
+- Definition of Done: P2P command starts gossipsub-based discovery
