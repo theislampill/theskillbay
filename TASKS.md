@@ -129,8 +129,9 @@
 - Added src/dedupe.rs with Jaccard similarity on names/descriptions, and find_similar method in discovery.
 
 ### Task 24: Implement Basic P2P Discovery
-- Title: Add libp2p-based P2P node for decentralized discovery
-- Purpose: Enable peer-to-peer skill sharing
-- Files: src/p2p.rs, src/main.rs
-- Prerequisites: libp2p dependency added
-- Definition of Done: P2P command starts gossipsub-based discovery
+- Status: Done
+- Added src/p2p.rs with gossipsub for announcements and reviews, integrated with DiscoveryStore via channel.
+
+### Task 25: Integrate P2P with Storage and Trust Propagation
+- Status: Done
+- Added DHT (kad) to P2P for scalable discovery, credibility scoring for reviewers based on review count, integrated with storage and P2P broadcasting.

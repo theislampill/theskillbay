@@ -1,4 +1,4 @@
-use crate::models::{SignedAnnouncement, PublishRecord, PinRecord, PatchRecord, ReviewRecord, SubmittedPatch};
+use crate::models::{SignedAnnouncement, PublishRecord, PinRecord, PatchRecord, ReviewRecord, SubmittedPatch, P2PMessage, CredibilityRecord};
 use crate::dedupe;
 use std::collections::HashMap;
 use std::sync::Mutex;
@@ -17,22 +17,30 @@ pub struct DiscoveryStore {
     pub patches: Mutex<HashMap<String, Vec<PatchRecord>>>,
     pub reviews: Mutex<HashMap<String, Vec<ReviewRecord>>>,
     pub submitted_patches: Mutex<HashMap<String, Vec<SubmittedPatch>>>,
+    pub credibility: Mutex<HashMap<String, CredibilityRecord>>,
     ann_tree: Tree,
     pub_tree: Tree,
     pin_tree: Tree,
     patch_tree: Tree,
     review_tree: Tree,
     submitted_patch_tree: Tree,
+    cred_tree: Tree,
+    p2p_sender: Option<tokio::sync::mpsc::UnboundedSender<P2PMessage>>,
 }
 
 impl DiscoveryStore {
     pub fn new(db: &sled::Db) -> Result<Self> {
+        Self::new_with_p2p(db, None)
+    }
+
+    pub fn new_with_p2p(db: &sled::Db, p2p_sender: Option<tokio::sync::mpsc::UnboundedSender<P2PMessage>>) -> Result<Self> {
         let ann_tree = db.open_tree("announcements")?;
         let pub_tree = db.open_tree("publish_records")?;
         let pin_tree = db.open_tree("pins")?;
         let patch_tree = db.open_tree("patches")?;
         let review_tree = db.open_tree("reviews")?;
         let submitted_patch_tree = db.open_tree("submitted_patches")?;
+        let cred_tree = db.open_tree("credibility")?;
         let mut ann_map = HashMap::new();
         for result in ann_tree.iter() {
             let (key, value) = result?;
@@ -75,6 +83,13 @@ impl DiscoveryStore {
             let patches: Vec<SubmittedPatch> = bincode::deserialize(&value)?;
             submitted_patch_map.insert(skill_id, patches);
         }
+        let mut cred_map = HashMap::new();
+        for result in cred_tree.iter() {
+            let (key, value) = result?;
+            let reviewer_id = String::from_utf8(key.to_vec())?;
+            let cred: CredibilityRecord = bincode::deserialize(&value)?;
+            cred_map.insert(reviewer_id, cred);
+        }
         Ok(Self {
             announcements: Mutex::new(ann_map),
             publish_records: Mutex::new(pub_map),
@@ -82,12 +97,15 @@ impl DiscoveryStore {
             patches: Mutex::new(patch_map),
             reviews: Mutex::new(review_map),
             submitted_patches: Mutex::new(submitted_patch_map),
+            credibility: Mutex::new(cred_map),
             ann_tree,
             pub_tree,
             pin_tree,
             patch_tree,
             review_tree,
             submitted_patch_tree,
+            cred_tree,
+            p2p_sender,
         })
     }
 
@@ -100,6 +118,12 @@ impl DiscoveryStore {
         let mut pub_map = self.publish_records.lock().unwrap();
         pub_map.insert(publish_record.skill_id.clone(), publish_record.clone());
         self.pub_tree.insert(publish_record.skill_id.as_bytes(), bincode::serialize(&publish_record)?)?;
+
+        // Broadcast to P2P if available
+        if let Some(sender) = &self.p2p_sender {
+            let _ = sender.send(P2PMessage::Announcement(announcement));
+        }
+
         Ok(())
     }
 
@@ -143,6 +167,24 @@ impl DiscoveryStore {
             ann.reputation.reviews = reviews.len() as u32;
             self.ann_tree.insert(review_record.skill_id.as_bytes(), bincode::serialize(ann)?)?;
         }
+
+        // Update credibility
+        let mut cred_map = self.credibility.lock().unwrap();
+        let cred = cred_map.entry(review_record.reviewer_id.clone()).or_insert(CredibilityRecord {
+            reviewer_id: review_record.reviewer_id.clone(),
+            score: 0.5, // Initial
+            total_reviews: 0,
+        });
+        cred.total_reviews += 1;
+        // Simple: credibility increases with more reviews, up to 1.0
+        cred.score = (cred.total_reviews as f64 / 10.0).min(1.0);
+        self.cred_tree.insert(review_record.reviewer_id.as_bytes(), bincode::serialize(cred)?)?;
+
+        // Broadcast to P2P if available
+        if let Some(sender) = &self.p2p_sender {
+            let _ = sender.send(P2PMessage::Review(review_record));
+        }
+
         Ok(())
     }
 

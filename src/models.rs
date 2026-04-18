@@ -115,6 +115,7 @@ pub struct PinRecord {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ReviewRecord {
     pub skill_id: String,
+    pub reviewer_id: String,
     pub rating: u8, // 1-5
     pub comment: String,
     pub timestamp: u64,
@@ -144,10 +145,17 @@ pub struct InstallDecision {
     pub reason: String,
 }
 
-/// Decision to execute
+/// Message types for P2P gossip
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ExecutionDecision {
-    pub skill_id: String,
-    pub allowed: bool,
-    pub reason: String,
+pub enum P2PMessage {
+    Announcement(SignedAnnouncement),
+    Review(ReviewRecord),
+}
+
+/// Credibility score for reviewers
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CredibilityRecord {
+    pub reviewer_id: String, // Could be public key or hash
+    pub score: f64, // 0-1 credibility
+    pub total_reviews: u32,
 }

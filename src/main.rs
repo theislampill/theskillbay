@@ -1,25 +1,18 @@
-use clap::Parser;
-use theskillbay::cli::{Cli, Commands};
-use theskillbay::models::*;
-use theskillbay::crypto::*;
-use theskillbay::git::*;
-use theskillbay::policy::*;
-use theskillbay::discovery::DiscoveryStore;
-use theskillbay::web::*;
-use std::fs;
-use std::path::Path;
-use anyhow::Result;
-use std::sync::Arc;
-use git2;
-use sled;
+use lazy_static::lazy_static;
+use tokio::sync::mpsc::UnboundedSender;
+
+lazy_static! {
+    static ref P2P_SENDER: std::sync::Mutex<Option<UnboundedSender<theskillbay::models::P2PMessage>>> = std::sync::Mutex::new(None);
+}
 
 #[tokio::main]
 async fn main() -> Result<()> {
     let cli = Cli::parse();
     let db_path = Path::new("./theskillbay.db");
     let db = sled::open(db_path)?;
+    let sender = P2P_SENDER.lock().unwrap().clone();
     let storage = Arc::new(Storage::new(db_path)?);
-    let store = Arc::new(DiscoveryStore::new(&db)?);
+    let store = Arc::new(DiscoveryStore::new_with_p2p(&db, sender)?);
 
     match cli.command {
         Commands::Init { path } => {
@@ -237,8 +230,10 @@ async fn main() -> Result<()> {
             run_web_server(store).await?;
         }
         Commands::Review { skill_id, rating, comment } => {
+            let kp = storage.get_keypair()?;
             let review = ReviewRecord {
                 skill_id: skill_id.clone(),
+                reviewer_id: kp.public_key.clone(),
                 rating: rating as u8,
                 comment,
                 timestamp: std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_secs(),
@@ -248,8 +243,15 @@ async fn main() -> Result<()> {
         }
         Commands::P2p {} => {
             println!("Starting P2P node...");
-            let mut p2p = theskillbay::p2p::P2PDiscovery::new().await?;
-            p2p.run().await?;
+            let mut p2p = P2PDiscovery::new().await?;
+            *P2P_SENDER.lock().unwrap() = Some(p2p.sender());
+            tokio::spawn(async move {
+                if let Err(e) = p2p.run().await {
+                    eprintln!("P2P error: {}", e);
+                }
+            });
+            // Keep running
+            tokio::signal::ctrl_c().await?;
         }
     }
     Ok(())

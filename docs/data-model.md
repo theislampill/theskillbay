@@ -51,6 +51,12 @@
 ## SubmittedPatch
 - skill_id, description, diff, timestamp
 
+## P2PMessage
+- Enum: Announcement(SignedAnnouncement) | Review(ReviewRecord)
+
+## CredibilityRecord
+- reviewer_id, score (0-1), total_reviews
+
 ## Hashing
 - Manifest + code hashed with SHA-256
 

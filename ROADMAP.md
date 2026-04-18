@@ -36,10 +36,13 @@
 - Semantic dedupe hooks (similarity checking)
 - Performance benchmarking with Criterion
 - Basic P2P discovery with libp2p
+- P2P integration with storage and trust propagation
+- DHT for scalable discovery
+- Advanced trust with reviewer credibility scoring
 
 ## V1 Next
-- Integrate P2P with sled storage
-- Advanced reputation with trust propagation
+- Full decentralized consensus
+- Advanced economics and incentives
 
 ## Deferred Hard Problems
 - Full distributed consensus

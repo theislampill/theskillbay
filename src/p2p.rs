@@ -1,23 +1,24 @@
 use libp2p::{
-    gossipsub, mdns, noise, swarm::NetworkBehaviour, swarm::SwarmEvent, tcp, yamux, PeerId, Swarm,
+    gossipsub, kad::{self, store::MemoryStore}, mdns, noise, swarm::NetworkBehaviour, swarm::SwarmEvent, tcp, yamux, PeerId, Swarm,
 };
-use std::collections::hash_map::DefaultHasher;
-use std::hash::{Hash, Hasher};
 use futures::prelude::*;
 use tokio::sync::mpsc;
-use crate::models::SignedAnnouncement;
+use crate::models::{SignedAnnouncement, ReviewRecord, P2PMessage};
 
-/// P2P discovery using libp2p gossipsub and mdns
+/// P2P discovery using libp2p gossipsub, mdns, and kad DHT
 
 #[derive(NetworkBehaviour)]
 pub struct SkillBehaviour {
     pub gossipsub: gossipsub::Behaviour,
     pub mdns: mdns::tokio::Behaviour,
+    pub kad: kad::Behaviour<MemoryStore>,
 }
 
 pub struct P2PDiscovery {
     swarm: Swarm<SkillBehaviour>,
     announcements: std::sync::Mutex<Vec<SignedAnnouncement>>,
+    reviews: std::sync::Mutex<Vec<ReviewRecord>>,
+    sender: tokio::sync::mpsc::UnboundedSender<P2PMessage>,
 }
 
 impl P2PDiscovery {
@@ -41,13 +42,20 @@ impl P2PDiscovery {
 
         let mdns = mdns::tokio::Behaviour::new(mdns::Config::default(), peer_id).unwrap();
 
-        let behaviour = SkillBehaviour { gossipsub, mdns };
+        let store = MemoryStore::new(peer_id);
+        let kad = kad::Behaviour::new(peer_id, store);
+
+        let behaviour = SkillBehaviour { gossipsub, mdns, kad };
 
         let swarm = Swarm::new(tcp_transport, behaviour, peer_id, libp2p::swarm::Config::default());
+
+        let (sender, _receiver) = tokio::sync::mpsc::unbounded_channel::<P2PMessage>();
 
         Ok(Self {
             swarm,
             announcements: std::sync::Mutex::new(vec![]),
+            reviews: std::sync::Mutex::new(vec![]),
+            sender,
         })
     }
 
@@ -55,32 +63,77 @@ impl P2PDiscovery {
         self.swarm.listen_on("/ip4/0.0.0.0/tcp/0".parse()?)?;
 
         loop {
-            match self.swarm.select_next_some().await {
-                SwarmEvent::Behaviour(SkillBehaviourEvent::Gossipsub(gossipsub::Event::Message { message, .. })) => {
-                    if let Ok(ann) = serde_json::from_slice::<SignedAnnouncement>(&message.data) {
-                        self.announcements.lock().unwrap().push(ann);
+            tokio::select! {
+                event = self.swarm.select_next_some() => match event {
+                    SwarmEvent::Behaviour(SkillBehaviourEvent::Gossipsub(gossipsub::Event::Message { message, .. })) => {
+                        if let Ok(msg) = serde_json::from_slice::<P2PMessage>(&message.data) {
+                            match msg {
+                                P2PMessage::Announcement(ann) => {
+                                    self.announcements.lock().unwrap().push(ann);
+                                }
+                                P2PMessage::Review(review) => {
+                                    self.reviews.lock().unwrap().push(review);
+                                }
+                            }
+                        }
+                    }
+                    SwarmEvent::Behaviour(SkillBehaviourEvent::Mdns(mdns::Event::Discovered(list))) => {
+                        for (peer_id, addr) in list {
+                            self.swarm.behaviour_mut().gossipsub.add_explicit_peer(&peer_id);
+                            self.swarm.behaviour_mut().kad.add_address(&peer_id, addr);
+                        }
+                    }
+                    SwarmEvent::Behaviour(SkillBehaviourEvent::Kad(kad::Event::RoutingUpdated { peer, .. })) => {
+                        self.swarm.behaviour_mut().kad.bootstrap().ok();
+                    }
+                    _ => {}
+                },
+                msg = self.sender.recv() => {
+                    if let Some(msg) = msg {
+                        // Publish to gossipsub
+                        let topic = gossipsub::IdentTopic::new("theskillbay");
+                        let data = serde_json::to_vec(&msg)?;
+                        self.swarm.behaviour_mut().gossipsub.publish(topic, data)?;
+
+                        // Put to DHT
+                        let key = match &msg {
+                            P2PMessage::Announcement(ann) => kad::RecordKey::new(&ann.skill_id),
+                            P2PMessage::Review(review) => kad::RecordKey::new(&format!("review_{}_{}", review.skill_id, review.timestamp)),
+                        };
+                        let record = kad::Record {
+                            key,
+                            value: serde_json::to_vec(&msg)?,
+                            publisher: None,
+                            expires: None,
+                        };
+                        self.swarm.behaviour_mut().kad.put_record(record, kad::Quorum::One).ok();
                     }
                 }
-                SwarmEvent::Behaviour(SkillBehaviourEvent::Mdns(mdns::Event::Discovered(list))) => {
-                    for (peer_id, _addr) in list {
-                        self.swarm.behaviour_mut().gossipsub.add_explicit_peer(&peer_id);
-                    }
-                }
-                _ => {}
             }
         }
     }
 
+    pub fn sender(&self) -> tokio::sync::mpsc::UnboundedSender<P2PMessage> {
+        self.sender.clone()
+    }
+
     pub async fn advertise(&mut self, announcement: SignedAnnouncement) -> Result<(), Box<dyn std::error::Error>> {
-        let topic = gossipsub::IdentTopic::new("theskillbay");
-        let data = serde_json::to_vec(&announcement)?;
-        self.swarm.behaviour_mut().gossipsub.publish(topic, data)?;
+        let msg = P2PMessage::Announcement(announcement);
+        let _ = self.sender.send(msg);
+        Ok(())
+    }
+
+    pub async fn broadcast_review(&mut self, review: ReviewRecord) -> Result<(), Box<dyn std::error::Error>> {
+        let msg = P2PMessage::Review(review);
+        let _ = self.sender.send(msg);
         Ok(())
     }
 
     pub fn discover(&self, _query: &str) -> Vec<SignedAnnouncement> {
-        // Simple: return all known announcements
-        // TODO: Implement proper querying
         self.announcements.lock().unwrap().clone()
+    }
+
+    pub fn get_reviews(&self, skill_id: &str) -> Vec<ReviewRecord> {
+        self.reviews.lock().unwrap().iter().filter(|r| r.skill_id == skill_id).cloned().collect()
     }
 }
