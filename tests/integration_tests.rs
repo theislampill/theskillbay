@@ -53,6 +53,85 @@ fn test_local_policy_deny() {
 }
 
 #[test]
+fn test_central_approval_required() {
+    let announcement = SignedAnnouncement {
+        skill_id: "test".to_string(),
+        metadata: HashMap::new(),
+        signature: "".to_string(),
+        public_key: "pubkey".to_string(),
+        reputation: ReputationSummary {
+            skill_id: "test".to_string(),
+            score: 1.0,
+            reviews: 0,
+        },
+    };
+    let local_policy = LocalPolicy {
+        allowed_publishers: vec![],
+        blocked_skills: vec![],
+        min_pow_difficulty: 4,
+        require_central_approval: true,
+    };
+    let central_policy = CentralPolicy {
+        approved_skills: vec!["test".to_string()],
+        banned_publishers: vec![],
+    };
+    let decision = combined_install_decision(&announcement, &local_policy, Some(&central_policy));
+    assert!(decision.allowed);
+
+    // Without central policy, should deny
+    let decision_no_central = combined_install_decision(&announcement, &local_policy, None);
+    assert!(!decision_no_central.allowed);
+
+    // With central policy but skill not approved, should deny
+    let central_policy_neutral = CentralPolicy {
+        approved_skills: vec![],
+        banned_publishers: vec![],
+    };
+    let decision_neutral = combined_install_decision(&announcement, &local_policy, Some(&central_policy_neutral));
+    assert!(!decision_neutral.allowed);
+
+    // With central policy banning publisher, should deny
+    let central_policy_ban = CentralPolicy {
+        approved_skills: vec![],
+        banned_publishers: vec!["pubkey".to_string()],
+    };
+    let decision_ban = combined_install_decision(&announcement, &local_policy, Some(&central_policy_ban));
+    assert!(!decision_ban.allowed);
+}
+
+#[test]
+fn test_central_approval_not_required() {
+    let announcement = SignedAnnouncement {
+        skill_id: "test".to_string(),
+        metadata: HashMap::new(),
+        signature: "".to_string(),
+        public_key: "pubkey".to_string(),
+        reputation: ReputationSummary {
+            skill_id: "test".to_string(),
+            score: 1.0,
+            reviews: 0,
+        },
+    };
+    let local_policy = LocalPolicy {
+        allowed_publishers: vec![],
+        blocked_skills: vec![],
+        min_pow_difficulty: 4,
+        require_central_approval: false,
+    };
+    let central_policy_ban = CentralPolicy {
+        approved_skills: vec![],
+        banned_publishers: vec!["pubkey".to_string()],
+    };
+    // Even with central deny, should allow since require_central_approval = false
+    let decision = combined_install_decision(&announcement, &local_policy, Some(&central_policy_ban));
+    assert!(decision.allowed);
+
+    // Without central, should allow
+    let decision_no_central = combined_install_decision(&announcement, &local_policy, None);
+    assert!(decision_no_central.allowed);
+}
+
+#[test]
 fn test_manifest_validation() {
     let valid_manifest = SkillManifest {
         version: "1.0".to_string(),

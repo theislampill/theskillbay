@@ -25,8 +25,8 @@ Decentralized skill sharing for agents, with Git as canonical artifact, compartm
 
 ## Responsibilities
 - Network: DHT/gossip for refs, hashes, announcements.
-- Policy: Local sovereign, central additive.
-- Execution: Only if policy allows.
+- Policy: Local sovereign (blocked skills, publisher allowlists, central approval requirement), central additive (approved skills, banned publishers).
+- Execution: Only if local policy allows; central policy checks deferred for execution in V0.
 
 ## Lifecycle
 Create -> Publish (PoW + sign) -> Discover -> Verify -> Policy eval -> Install -> Execute.
@@ -34,8 +34,25 @@ Create -> Publish (PoW + sign) -> Discover -> Verify -> Policy eval -> Install -
 ## Harbour vs theskillbay
 theskillbay: Network/protocol. Harbour: Client/agent addon.
 
-## V0 Scope
-CLI prototype, in-memory discovery, basic PoW, policy, Git integration.
+## V0 Implementation Status
 
-## Deferred Scope
-Full DHT, web UI, advanced reputation, semantic dedupe, consensus.
+### Implemented in V0
+- **Data Models**: All core structs (Skill, SkillManifest, SignedAnnouncement, etc.)
+- **Crypto**: SHA-256 hashing, Ed25519 signing, basic PoW
+- **Git Integration**: Repo init, commit, clone operations
+- **Policy**: Local and central policy evaluation, storage
+- **Discovery**: In-memory storage with sled persistence, basic queries
+- **Execution**: Subprocess execution (no sandboxing)
+- **CLI**: Full command set for skill lifecycle
+- **Storage**: sled-based persistence for policies, announcements, reviews
+- **Web UI**: Basic actix-web server (stub interface)
+- **P2P**: Basic libp2p integration (gossipsub, mDNS, DHT stub)
+- **Reputation**: Review system with credibility scoring
+
+### Deferred / Stubbed in V0
+- **Full P2P Network**: DHT for distributed storage, consensus
+- **Advanced Consensus**: Proof-of-reputation, decentralized validation
+- **Sandboxing**: Strongly isolated execution environment
+- **Semantic Deduplication**: ML-based similarity detection
+- **Enterprise Auth**: Advanced authentication mechanisms
+- **Economics**: Token incentives, advanced reputation models

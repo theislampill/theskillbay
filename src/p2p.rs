@@ -13,7 +13,7 @@ use libp2p::{
 use futures::prelude::*;
 use serde_json;
 use tokio::sync::mpsc;
-use crate::models::{P2PMessage, ReviewRecord, SignedAnnouncement};
+use crate::models::{P2PMessage, ReviewRecord, SignedAnnouncement, ReputationUpdate};
 
 /// P2P discovery using libp2p gossipsub, mdns, and kad DHT
 
@@ -84,6 +84,10 @@ impl P2PDiscovery {
                                 P2PMessage::Review(review) => {
                                     self.reviews.lock().unwrap().push(review);
                                 }
+                                P2PMessage::ReputationUpdate(update) => {
+                                    // Handle reputation update for consensus
+                                    // This would integrate with discovery store
+                                }
                             }
                         }
                     }
@@ -109,6 +113,7 @@ impl P2PDiscovery {
                         let key = match &msg {
                             P2PMessage::Announcement(ann) => kad::RecordKey::new(&ann.skill_id),
                             P2PMessage::Review(review) => kad::RecordKey::new(&format!("review_{}_{}", review.skill_id, review.timestamp)),
+                            P2PMessage::ReputationUpdate(update) => kad::RecordKey::new(&format!("reputation_{}_{}", update.skill_id, update.timestamp)),
                         };
                         let record = kad::Record {
                             key,
@@ -135,6 +140,12 @@ impl P2PDiscovery {
 
     pub async fn broadcast_review(&mut self, review: ReviewRecord) -> Result<(), Box<dyn std::error::Error>> {
         let msg = P2PMessage::Review(review);
+        let _ = self.sender.send(msg);
+        Ok(())
+    }
+
+    pub async fn broadcast_reputation_update(&mut self, update: ReputationUpdate) -> Result<(), Box<dyn std::error::Error>> {
+        let msg = P2PMessage::ReputationUpdate(update);
         let _ = self.sender.send(msg);
         Ok(())
     }

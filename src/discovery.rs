@@ -1,4 +1,4 @@
-use crate::models::{SignedAnnouncement, PublishRecord, PinRecord, PatchRecord, ReviewRecord, SubmittedPatch, P2PMessage, CredibilityRecord};
+use crate::models::{SignedAnnouncement, PublishRecord, PinRecord, PatchRecord, ReviewRecord, SubmittedPatch, P2PMessage, CredibilityRecord, ReputationUpdate};
 use crate::dedupe;
 use std::collections::HashMap;
 use std::sync::Mutex;
@@ -159,13 +159,21 @@ impl DiscoveryStore {
         let reviews = review_map.entry(review_record.skill_id.clone()).or_insert(vec![]);
         reviews.push(review_record.clone());
         self.review_tree.insert(review_record.skill_id.as_bytes(), bincode::serialize(reviews)?)?;
-        // Update reputation in announcement
+        // Update reputation in announcement with network aggregation
         let mut ann_map = self.announcements.lock().unwrap();
         if let Some(ann) = ann_map.get_mut(&review_record.skill_id) {
-            let avg_rating = reviews.iter().map(|r| r.rating as f64).sum::<f64>() / reviews.len() as f64;
-            ann.reputation.score = avg_rating;
-            ann.reputation.reviews = reviews.len() as u32;
-            self.ann_tree.insert(review_record.skill_id.as_bytes(), bincode::serialize(ann)?)?;
+            if let Some(network_score) = self.aggregate_network_reputation(&review_record.skill_id) {
+                // Use consensus validation
+                let local_avg = reviews.iter().map(|r| r.rating as f64).sum::<f64>() / reviews.len() as f64;
+                if self.consensus_validate_reputation(&review_record.skill_id, local_avg, 0.5) {
+                    ann.reputation.score = network_score;
+                } else {
+                    // Fallback to local if consensus fails
+                    ann.reputation.score = local_avg;
+                }
+                ann.reputation.reviews = reviews.len() as u32;
+                self.ann_tree.insert(review_record.skill_id.as_bytes(), bincode::serialize(ann)?)?;
+            }
         }
 
         // Update credibility
@@ -183,6 +191,16 @@ impl DiscoveryStore {
         // Broadcast to P2P if available
         if let Some(sender) = &self.p2p_sender {
             let _ = sender.send(P2PMessage::Review(review_record));
+            // Also broadcast reputation update for consensus
+            if let Some(network_score) = self.aggregate_network_reputation(&review_record.skill_id) {
+                let update = ReputationUpdate {
+                    skill_id: review_record.skill_id.clone(),
+                    score: network_score,
+                    reviews: reviews.len() as u32,
+                    timestamp: std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_secs(),
+                };
+                let _ = sender.send(P2PMessage::ReputationUpdate(update));
+            }
         }
 
         Ok(())
@@ -195,6 +213,46 @@ impl DiscoveryStore {
             .filter(|ann| ann.skill_id.contains(query) || ann.metadata.get("name").unwrap_or(&"".to_string()).contains(query))
             .cloned()
             .collect()
+    }
+
+    /// Aggregate reputation from network reviews with credibility weighting
+    pub fn aggregate_network_reputation(&self, skill_id: &str) -> Option<f64> {
+        let reviews = self.reviews.lock().unwrap();
+        let skill_reviews: Vec<&ReviewRecord> = reviews.values()
+            .flat_map(|v| v.iter())
+            .filter(|r| r.skill_id == skill_id)
+            .collect();
+
+        if skill_reviews.is_empty() {
+            return None;
+        }
+
+        let credibility_map = self.credibility.lock().unwrap();
+        let total_weight: f64 = skill_reviews.iter()
+            .map(|r| credibility_map.get(&r.reviewer_id).map(|c| c.score).unwrap_or(0.5))
+            .sum();
+
+        if total_weight == 0.0 {
+            return Some(skill_reviews.iter().map(|r| r.rating as f64).sum::<f64>() / skill_reviews.len() as f64);
+        }
+
+        let weighted_sum: f64 = skill_reviews.iter()
+            .map(|r| {
+                let cred = credibility_map.get(&r.reviewer_id).map(|c| c.score).unwrap_or(0.5);
+                r.rating as f64 * cred
+            })
+            .sum();
+
+        Some(weighted_sum / total_weight)
+    }
+
+    /// Consensus validation: check if network reputation agrees within threshold
+    pub fn consensus_validate_reputation(&self, skill_id: &str, local_score: f64, threshold: f64) -> bool {
+        if let Some(network_score) = self.aggregate_network_reputation(skill_id) {
+            (network_score - local_score).abs() <= threshold
+        } else {
+            true // No network data, accept local
+        }
     }
 
     /// Find similar skills to avoid duplicates

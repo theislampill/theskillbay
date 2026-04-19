@@ -69,6 +69,26 @@ pub fn combined_install_decision(
     if !local_decision.allowed {
         return local_decision;
     }
+    if local_policy.require_central_approval {
+        if let Some(central) = central_policy {
+            let central_decision = evaluate_central_install(announcement, Some(central));
+            if let Some(dec) = central_decision {
+                return dec;
+            } else {
+                return InstallDecision {
+                    skill_id: announcement.skill_id.clone(),
+                    allowed: false,
+                    reason: "Central approval required but no central policy available".to_string(),
+                };
+            }
+        } else {
+            return InstallDecision {
+                skill_id: announcement.skill_id.clone(),
+                allowed: false,
+                reason: "Central approval required but no central policy available".to_string(),
+            };
+        }
+    }
     if let Some(central) = central_policy {
         let central_decision = evaluate_central_install(announcement, Some(central));
         if let Some(dec) = central_decision {
@@ -93,15 +113,7 @@ pub fn evaluate_execution(
             reason: "Skill blocked by local policy".to_string(),
         };
     }
-    if let Some(central) = central_policy {
-        if central.banned_publishers.contains(skill_id) { // Note: in real, check publisher, but stub
-            return ExecutionDecision {
-                skill_id: skill_id.to_string(),
-                allowed: false,
-                reason: "Skill banned by central policy".to_string(),
-            };
-        }
-    }
+    // Note: Central policy check for execution is deferred in V0 due to identity resolution complexity
     ExecutionDecision {
         skill_id: skill_id.to_string(),
         allowed: true,

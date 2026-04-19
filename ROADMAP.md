@@ -1,53 +1,40 @@
 # Roadmap
 
-## V0 Done
-- Basic data models
-- Crypto primitives (hash, sign, PoW)
-- Git integration
-- Policy evaluation
-- In-memory discovery stub
-- CLI commands
-- Tests
-- Full publish flow with Git commit
-- Local storage with sled
-- Persistent discovery
-- Manifest validation
-- Basic execution sandbox
-- Git clone for install
-- Verify command with sig/PoW checks
-- Central policy support
-- Updated tests and docs
-- Reputation stub
-- Pinning support
-- Error handling improvements
-- Benchmarking stub
-- Full flow example
+## V0 (Current: Prototype Complete)
 
-## V0 Next
-- Patch/PR support
-- Semantic dedupe stub
-- UI stub
-- libp2p integration stub (dependency added)
-- Performance benchmarking
+### Implemented
+- Basic data models and crypto primitives
+- Git integration for skill versioning
+- Policy evaluation and storage (local + central)
+- CLI commands for full skill lifecycle
+- In-memory discovery with sled persistence
+- Basic execution via subprocess
+- Web UI stub with actix-web
+- Reputation system with reviews and credibility
+- Basic P2P integration (libp2p gossipsub, mDNS, DHT stub)
+- Patch support (Git-based, no full PR workflow)
+- Pinning support (stub)
+- Manifest validation and verification
+- Error handling and testing
 
-## V1 Done
-- Basic reputation system (reviews and ratings)
-- Collaborative editing UI (web forms for reviews and patches)
-- Semantic dedupe hooks (similarity checking)
-- Performance benchmarking with Criterion
-- Basic P2P discovery with libp2p
-- P2P integration with storage and trust propagation
-- DHT for scalable discovery
-- Advanced trust with reviewer credibility scoring
+### Known Limitations
+- Execution is subprocess only (no sandboxing)
+- P2P is basic (no full DHT consensus)
+- Web UI is minimal (no advanced collaboration features)
+- Discovery is local-first (P2P propagation stubbed)
 
-## V1 Next
-- Full decentralized consensus
-- Advanced economics and incentives
+## V1 (Next: Advanced Decentralization)
 
-## Deferred Hard Problems
+### Planned
+- Full DHT-based distributed discovery
+- Advanced consensus mechanisms (proof-of-reputation)
+- Sandboxed execution environment
+- Semantic deduplication
+- Advanced web UI for collaboration
+- Enterprise authentication
+- Economic incentives and token system
+
+## Deferred (V2+)
 - Full distributed consensus
 - Advanced economics
-- Enterprise auth
-- Full distributed consensus
-- Advanced economics
-- Enterprise auth
+- Enterprise-scale deployment

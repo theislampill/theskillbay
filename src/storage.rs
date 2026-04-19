@@ -49,4 +49,20 @@ impl Storage {
             Ok(None)
         }
     }
+
+    pub fn save_policy(&self, policy: &crate::models::LocalPolicy) -> Result<()> {
+        let tree = self.db.open_tree("policies")?;
+        tree.insert("local", bincode::serialize(policy)?)?;
+        Ok(())
+    }
+
+    pub fn load_policy(&self) -> Result<crate::models::LocalPolicy> {
+        let tree = self.db.open_tree("policies")?;
+        if let Some(data) = tree.get("local")? {
+            let policy: crate::models::LocalPolicy = bincode::deserialize(&data)?;
+            Ok(policy)
+        } else {
+            Ok(crate::models::LocalPolicy::default())
+        }
+    }
 }

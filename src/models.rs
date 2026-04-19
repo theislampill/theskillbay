@@ -145,11 +145,29 @@ pub struct InstallDecision {
     pub reason: String,
 }
 
+/// Decision to execute
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ExecutionDecision {
+    pub skill_id: String,
+    pub allowed: bool,
+    pub reason: String,
+}
+
+/// Reputation update for consensus
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ReputationUpdate {
+    pub skill_id: String,
+    pub score: f64,
+    pub reviews: u32,
+    pub timestamp: u64,
+}
+
 /// Message types for P2P gossip
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum P2PMessage {
     Announcement(SignedAnnouncement),
     Review(ReviewRecord),
+    ReputationUpdate(ReputationUpdate),
 }
 
 /// Credibility score for reviewers

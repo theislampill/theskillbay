@@ -137,7 +137,7 @@ async fn main() -> Result<()> {
                 println!("Verification failed: Skill {} not found", skill_id);
             }
         }
-        Commands::Install { skill_id, path: _ } => {
+        Commands::Install { skill_id, path } => {
             // Discover the skill
             let announcements = store.discover(&skill_id);
             if let Some(ann) = announcements.into_iter().find(|a| a.skill_id == skill_id) {
@@ -146,9 +146,9 @@ async fn main() -> Result<()> {
                 let decision = combined_install_decision(&ann, &local_policy, central_policy.as_ref());
                 if decision.allowed {
                     if let Some(git_url) = ann.metadata.get("git_url") {
-                        let dest = Path::new("./skills").join(&skill_id);
+                        let dest = path.join(&skill_id);
                         clone_repo(git_url, &dest)?;
-                        println!("Installed skill {} from {}", skill_id, git_url);
+                        println!("Installed skill {} from {} to {:?}", skill_id, git_url, dest);
                     } else {
                         println!("Install failed: No git_url in announcement for skill {}", skill_id);
                     }
