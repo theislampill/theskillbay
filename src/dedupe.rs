@@ -5,8 +5,8 @@ use crate::models::SignedAnnouncement;
 pub fn similarity_score(ann1: &SignedAnnouncement, ann2: &SignedAnnouncement) -> f64 {
     let name1 = ann1.metadata.get("name").unwrap_or(&ann1.skill_id);
     let name2 = ann2.metadata.get("name").unwrap_or(&ann2.skill_id);
-    let desc1 = ann1.metadata.get("description").unwrap_or(&"".to_string());
-    let desc2 = ann2.metadata.get("description").unwrap_or(&"".to_string());
+    let desc1 = ann1.metadata.get("description").map(|s| s.as_str()).unwrap_or("");
+    let desc2 = ann2.metadata.get("description").map(|s| s.as_str()).unwrap_or("");
 
     // Simple Jaccard similarity on words
     let words1: std::collections::HashSet<&str> = name1.split_whitespace().chain(desc1.split_whitespace()).collect();

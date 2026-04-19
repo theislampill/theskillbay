@@ -7,7 +7,7 @@ pub fn evaluate_local_install(
     local_policy: &LocalPolicy,
 ) -> InstallDecision {
     // Check if publisher is blocked
-    if local_policy.blocked_skills.contains(&announcement.skill_id) {
+    if local_policy.blocked_skills.iter().any(|blocked| blocked == &announcement.skill_id) {
         return InstallDecision {
             skill_id: announcement.skill_id.clone(),
             allowed: false,
@@ -106,7 +106,7 @@ pub fn evaluate_execution(
     local_policy: &LocalPolicy,
     central_policy: Option<&CentralPolicy>,
 ) -> ExecutionDecision {
-    if local_policy.blocked_skills.contains(skill_id) {
+    if local_policy.blocked_skills.iter().any(|blocked| blocked == skill_id) {
         return ExecutionDecision {
             skill_id: skill_id.to_string(),
             allowed: false,

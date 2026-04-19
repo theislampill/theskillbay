@@ -1,3 +1,5 @@
+use base64::engine::general_purpose::STANDARD as BASE64_ENGINE;
+use base64::Engine;
 use ring::signature::{Ed25519KeyPair, KeyPair, UnparsedPublicKey, ED25519};
 use ring::digest::{Context, SHA256};
 use std::fs;
@@ -17,21 +19,21 @@ pub fn generate_keypair() -> Result<(String, String)> {
     let pkcs8 = Ed25519KeyPair::generate_pkcs8(&rng)?;
     let keypair = Ed25519KeyPair::from_pkcs8(pkcs8.as_ref())?;
     let public_key = hex::encode(keypair.public_key().as_ref());
-    let private_key = base64::encode(pkcs8.as_ref());
+    let private_key = BASE64_ENGINE.encode(pkcs8.as_ref());
     Ok((public_key, private_key))
 }
 
 /// Sign data with private key
 pub fn sign(data: &[u8], private_key_b64: &str) -> Result<String> {
-    let private_key_bytes = base64::decode(private_key_b64)?;
+    let private_key_bytes = BASE64_ENGINE.decode(private_key_b64)?;
     let keypair = Ed25519KeyPair::from_pkcs8(&private_key_bytes)?;
     let signature = keypair.sign(data);
-    Ok(base64::encode(signature.as_ref()))
+    Ok(BASE64_ENGINE.encode(signature.as_ref()))
 }
 
 /// Verify signature
 pub fn verify(data: &[u8], signature_b64: &str, public_key_hex: &str) -> Result<bool> {
-    let signature_bytes = base64::decode(signature_b64)?;
+    let signature_bytes = BASE64_ENGINE.decode(signature_b64)?;
     let public_key_bytes = hex::decode(public_key_hex)?;
     let public_key = UnparsedPublicKey::new(&ED25519, &public_key_bytes);
     match public_key.verify(data, &signature_bytes) {

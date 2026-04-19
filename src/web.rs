@@ -58,6 +58,7 @@ pub async fn submit_review(
     let skill_id = path.into_inner();
     let review = ReviewRecord {
         skill_id: skill_id.clone(),
+        reviewer_id: "web".to_string(),
         rating: form.rating,
         comment: form.comment.clone(),
         timestamp: std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_secs(),

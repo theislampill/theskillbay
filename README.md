@@ -53,7 +53,7 @@ cargo build --release
 - `pin <skill_id>`: Pin a skill for availability (stub)
 - `web`: Start basic web UI for skill discovery
 - `review <skill_id> <rating> <comment>`: Review a skill
-- `p2p`: Start P2P node (basic libp2p integration)
+- `p2p`: Start P2P node (stubbed network behavior in V0)
 
 ## Verification
 

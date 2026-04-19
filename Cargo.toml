@@ -18,7 +18,7 @@ anyhow = "1.0"
 bincode = "1.3"
 actix-web = "4.0"
 serde_urlencoded = "0.7"
-libp2p = { version = "0.53", features = ["tcp", "dns", "async-std", "mplex", "yamux", "noise", "gossipsub", "kad"] }
+libp2p = { version = "0.53", features = ["tcp", "dns", "async-std", "yamux", "noise", "gossipsub", "kad"] }
 lazy_static = "1.4"
 
 [dev-dependencies]

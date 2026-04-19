@@ -188,13 +188,14 @@ impl DiscoveryStore {
         cred.score = (cred.total_reviews as f64 / 10.0).min(1.0);
         self.cred_tree.insert(review_record.reviewer_id.as_bytes(), bincode::serialize(cred)?)?;
 
+        let skill_id = review_record.skill_id.clone();
         // Broadcast to P2P if available
         if let Some(sender) = &self.p2p_sender {
             let _ = sender.send(P2PMessage::Review(review_record));
             // Also broadcast reputation update for consensus
-            if let Some(network_score) = self.aggregate_network_reputation(&review_record.skill_id) {
+            if let Some(network_score) = self.aggregate_network_reputation(&skill_id) {
                 let update = ReputationUpdate {
-                    skill_id: review_record.skill_id.clone(),
+                    skill_id: skill_id.clone(),
                     score: network_score,
                     reviews: reviews.len() as u32,
                     timestamp: std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_secs(),
@@ -210,7 +211,15 @@ impl DiscoveryStore {
     pub fn discover(&self, query: &str) -> Vec<SignedAnnouncement> {
         let map = self.announcements.lock().unwrap();
         map.values()
-            .filter(|ann| ann.skill_id.contains(query) || ann.metadata.get("name").unwrap_or(&"".to_string()).contains(query))
+            .filter(|ann| {
+                ann.skill_id.contains(query)
+                    || ann
+                        .metadata
+                        .get("name")
+                        .map(|s| s.as_str())
+                        .unwrap_or("")
+                        .contains(query)
+            })
             .cloned()
             .collect()
     }
