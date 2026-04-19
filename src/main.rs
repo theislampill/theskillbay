@@ -148,12 +148,18 @@ async fn main() -> Result<()> {
                     if let Some(git_url) = ann.metadata.get("git_url") {
                         let dest = path.join(&skill_id);
                         clone_repo(git_url, &dest)?;
-                        println!("Installed skill {} from {} to {:?}", skill_id, git_url, dest);
+                        println!(
+                            "Installed skill {} from {} to {:?}",
+                            skill_id, git_url, dest
+                        );
                     } else {
                         println!("Install failed: No git_url in announcement for skill {}", skill_id);
                     }
                 } else {
-                    println!("Install denied for skill {}: {}", skill_id, decision.reason);
+                    println!(
+                        "Install denied for skill {}: {}",
+                        skill_id, decision.reason
+                    );
                 }
             } else {
                 println!("Install failed: Skill {} not found", skill_id);
@@ -182,7 +188,10 @@ async fn main() -> Result<()> {
         Commands::ShowPolicyDecision { skill_id } => {
             let local_policy = storage.load_policy()?;
             let decision = evaluate_execution(&skill_id, &local_policy, None);
-            println!("Decision for {}: {} - {}", skill_id, decision.allowed, decision.reason);
+            println!(
+                "Decision for {}: {} - {}",
+                skill_id, decision.allowed, decision.reason
+            );
         }
         Commands::SetPolicy { blocked, min_pow } => {
             let mut policy = storage.load_policy()?;

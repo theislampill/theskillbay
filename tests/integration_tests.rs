@@ -197,3 +197,4 @@ fn test_dedupe_similarity() {
     assert!(score > 0.0); // Should have some similarity due to "test" and "testing"
     assert!(score < 1.0); // Not identical
 }
+}

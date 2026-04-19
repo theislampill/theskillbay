@@ -23,7 +23,11 @@ pub async fn index(store: web::Data<Arc<DiscoveryStore>>) -> ActixResult<HttpRes
         let name = ann.metadata.get("name").unwrap_or(&ann.skill_id);
         html.push_str(&format!(
             "<li>{} - {} (Score: {}) <a href='/review/{}'>Review</a> <a href='/patch/{}'>Patch</a></li>",
-            name, ann.skill_id, ann.reputation.score, ann.skill_id, ann.skill_id
+            name,
+            ann.skill_id,
+            ann.reputation.score,
+            ann.skill_id,
+            ann.skill_id
         ));
     }
     html.push_str("</ul></body></html>");

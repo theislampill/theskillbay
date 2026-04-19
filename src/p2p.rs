@@ -3,8 +3,7 @@ use libp2p::{
     kad::{self, record::Key as RecordKey, store::MemoryStore},
     mdns,
     noise,
-    swarm::NetworkBehaviour,
-    swarm::SwarmEvent,
+    swarm::{NetworkBehaviour, SwarmEvent},
     tcp,
     yamux,
     PeerId,
@@ -75,7 +74,9 @@ impl P2PDiscovery {
         loop {
             tokio::select! {
                 event = self.swarm.select_next_some() => match event {
-                    SwarmEvent::Behaviour(SkillBehaviourEvent::Gossipsub(gossipsub::Event::Message { message, .. })) => {
+                    SwarmEvent::Behaviour(SkillBehaviourEvent::Gossipsub(
+                        gossipsub::Event::Message { message, .. },
+                    )) => {
                         if let Ok(msg) = serde_json::from_slice::<P2PMessage>(&message.data) {
                             match msg {
                                 P2PMessage::Announcement(ann) => {
@@ -91,13 +92,17 @@ impl P2PDiscovery {
                             }
                         }
                     }
-                    SwarmEvent::Behaviour(SkillBehaviourEvent::Mdns(mdns::Event::Discovered(list))) => {
+                    SwarmEvent::Behaviour(SkillBehaviourEvent::Mdns(
+                        mdns::Event::Discovered(list),
+                    )) => {
                         for (peer_id, addr) in list {
                             self.swarm.behaviour_mut().gossipsub.add_explicit_peer(&peer_id);
                             self.swarm.behaviour_mut().kad.add_address(&peer_id, addr);
                         }
                     }
-                    SwarmEvent::Behaviour(SkillBehaviourEvent::Kad(kad::Event::RoutingUpdated { peer, .. })) => {
+                    SwarmEvent::Behaviour(SkillBehaviourEvent::Kad(
+                        kad::Event::RoutingUpdated { peer, .. },
+                    )) => {
                         self.swarm.behaviour_mut().kad.bootstrap().ok();
                     }
                     _ => {}
@@ -112,8 +117,15 @@ impl P2PDiscovery {
                         // Put to DHT
                         let key = match &msg {
                             P2PMessage::Announcement(ann) => kad::RecordKey::new(&ann.skill_id),
-                            P2PMessage::Review(review) => kad::RecordKey::new(&format!("review_{}_{}", review.skill_id, review.timestamp)),
-                            P2PMessage::ReputationUpdate(update) => kad::RecordKey::new(&format!("reputation_{}_{}", update.skill_id, update.timestamp)),
+                            P2PMessage::Review(review) => {
+                                kad::RecordKey::new(&format!("review_{}_{}", review.skill_id, review.timestamp))
+                            }
+                            P2PMessage::ReputationUpdate(update) => {
+                                kad::RecordKey::new(&format!(
+                                    "reputation_{}_{}",
+                                    update.skill_id, update.timestamp
+                                ))
+                            }
                         };
                         let record = kad::Record {
                             key,
@@ -144,7 +156,10 @@ impl P2PDiscovery {
         Ok(())
     }
 
-    pub async fn broadcast_reputation_update(&mut self, update: ReputationUpdate) -> Result<(), Box<dyn std::error::Error>> {
+    pub async fn broadcast_reputation_update(
+        &mut self,
+        update: ReputationUpdate,
+    ) -> Result<(), Box<dyn std::error::Error>> {
         let msg = P2PMessage::ReputationUpdate(update);
         let _ = self.sender.send(msg);
         Ok(())
